@@ -37,7 +37,8 @@ class TestFixture
       unsigned char buffer[] = { '\\', 'u', '0', '0', 'b', '0' };
       uint32_t code_point=0;
       ErrorHandler eh;
-      fastjson::read_unicode_escape<ErrorHandler>( buffer, buffer+6, &code_point, &eh );
+      uint32_t line = 1;
+      fastjson::read_unicode_escape<ErrorHandler>( buffer, buffer+6, &code_point, &eh, line );
       saru_assert( ! eh.called );
       saru_assert_equal(176u, code_point);
     }
@@ -46,7 +47,8 @@ class TestFixture
       unsigned char buffer[] = { '\\', 'u', '2', '1', '0', '3' };
       uint32_t code_point=0;
       ErrorHandler eh;
-      fastjson::read_unicode_escape<ErrorHandler>( buffer, buffer+6, &code_point, &eh );
+      uint32_t line = 1;
+      fastjson::read_unicode_escape<ErrorHandler>( buffer, buffer+6, &code_point, &eh, line );
       saru_assert( ! eh.called );
       saru_assert_equal(8451, code_point);
     }
