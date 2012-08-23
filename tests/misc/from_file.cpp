@@ -1,7 +1,7 @@
 //SARU : Tag dummy
 // SARU : CxxLibs -L.. -lfastjson
 
-#include "fastjson.h"
+#include "fastjson/fastjson.h"
 #include <iostream>
 
 
@@ -23,7 +23,7 @@ void process_json( const char * filename )
   fclose(fp);
 
   fastjson::JsonElementCount count;
-  fastjson::count_elements( std::string(json,json+len), &count );
+  fastjson::count_elements( (const unsigned char*)json,(const unsigned char*)json+len, &count );
   std::cout<<"# strings = "<<count.n_strings()<<std::endl;
   std::cout<<"# dicts = "<<count.n_dicts()<<std::endl;
   std::cout<<"# array = "<<count.n_arrays()<<std::endl;
@@ -42,16 +42,16 @@ void process_json( const char * filename )
   doc.array_store  = arrays;
   doc.dict_store   = dicts;
 
-  bool ok = fastjson::parse_doc( std::string(json,json+len), &doc );
+  bool ok = fastjson::parse_doc( (const unsigned char*)json,(const unsigned char*)json+len, &doc );
   std::cout<<"Parsed OK = "<<ok<<std::endl;
-
+  delete [] json;
   delete [] strings;
   delete [] arrays;
   delete [] dicts;
 
 }
 
-int main()
+int main(int argc, char** argv)
 {
-  process_json( "ugly.json" );
+  process_json( argv[1] );
 }
