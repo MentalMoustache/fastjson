@@ -33,12 +33,18 @@ namespace fastjson { namespace dom {
 
   bool parse_string( const std::string & s, Token * tok, Chunk * chunk, unsigned int mode, fastjson::UserErrorCallback user_error_callback, void * user_data )
   {
+    const unsigned char * start = (const unsigned char*)(s.c_str());
+    return parse_string( start, start+s.length(), tok, chunk, mode, user_error_callback, user_data );
+  }
+
+  bool parse_string( const unsigned char * start, const unsigned char * end, Token * tok, Chunk * chunk, unsigned int mode, fastjson::UserErrorCallback user_error_callback, void * user_data )
+  {
     fastjson::JsonElementCount count;
     count.user_error_callback = user_error_callback;
     count.user_data = user_data;
     count.mode = mode;
 
-    if( ! fastjson::count_elements( s, &count ) ) return false;
+    if( ! fastjson::count_elements( start, end, &count ) ) return false;
 
     // Allocate up enough space.
     fastjson::Document doc;
@@ -74,7 +80,7 @@ namespace fastjson { namespace dom {
 
     //Actually read the stuff into the arrays etc.
 
-    if( ! fastjson::parse_doc( s, &doc ) )
+    if( ! fastjson::parse_doc( start, end, &doc ) )
     {
       delete [] doc.array_store;
       delete [] doc.dict_store;
