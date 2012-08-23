@@ -102,6 +102,7 @@ namespace fastjson
         else
         {
           std::cerr<<"fastjson : an error occured ["<<ec.errcode<<"] : "<<ec.mesg<<std::endl;
+          std::cerr<<"On line "<<ec.line_num<<std::endl;
           std::cerr<<"It seems to have happened here..."<<std::endl;
           const unsigned char * ep = (ec.locn+10<ec.end_context)?ec.locn+10:ec.end_context;
           const unsigned char * sp = (ec.locn-10>ec.start_context)?ec.locn-10:ec.start_context;

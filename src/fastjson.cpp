@@ -102,16 +102,16 @@ static inline bool iswhite( unsigned char c )
 //Moves pointer as far as it can while reading a valid number.
 //If it fails to parse any characters it returns start
 template<typename PARSER>
-const unsigned char * parse_number( const unsigned char * start, const unsigned char * end, PARSER * p )
+const unsigned char * parse_number( const unsigned char * start, const unsigned char * end, PARSER * p, uint32_t & line_num )
 {
   const unsigned char * cursor = start;
   //Eat the optional sign
-  if( cursor==end ) { p->on_error( ErrorContext( 1000, "end of input during number",start,cursor,end) ); return start; }
+  if( cursor==end ) { p->on_error( ErrorContext( 1000, "end of input during number",line_num,start,cursor,end) ); return start; }
   if( *cursor=='-' ) { ++cursor; }
 
 
   //Eat the integer mantissa
-  if( cursor==end ) { p->on_error( ErrorContext( 1000, "end of input during number",start,cursor,end)); return start; }
+  if( cursor==end ) { p->on_error( ErrorContext( 1000, "end of input during number",line_num,start,cursor,end)); return start; }
   if( *cursor=='0' ) { ++cursor;}
   else if( isdigit(*cursor) )
   {
@@ -124,7 +124,7 @@ const unsigned char * parse_number( const unsigned char * start, const unsigned 
   else
   {
     //Its not valid ..
-    p->on_error( ErrorContext( 1001, "invalid number",start,cursor,end));
+    p->on_error( ErrorContext( 1001, "invalid number",line_num,start,cursor,end));
     return start;
   }
   if( cursor==end ) return cursor;
@@ -193,11 +193,12 @@ namespace fastjson
     uint32_t subelements;
   };
 
-  static inline const unsigned char * eat_whitespace( const unsigned char * start, const unsigned char * end )
+  static inline const unsigned char * eat_whitespace( const unsigned char * start, const unsigned char * end, uint32_t & line_num )
   {
     const unsigned char * cursor = start;
     while( cursor!=end && ::fastjson::internal::iswhite(*cursor) )
     {
+      if (*cursor=='\n') ++line_num;
       ++cursor;
     }
     return cursor;
@@ -211,12 +212,13 @@ namespace fastjson
     const unsigned char * start,
     const unsigned char * end,
     T * callback,
-    std::vector<ParserState> * state )
+    std::vector<ParserState> * state,
+    uint32_t & line_num )
   {
-    const unsigned char * cursor = eat_whitespace(start,end);
+    const unsigned char * cursor = eat_whitespace(start,end,line_num);
     if( cursor==end )
     {
-      callback->on_error( ErrorContext( 2000, "Expected object, got end of input instead",start,cursor,end));
+      callback->on_error( ErrorContext( 2000, "Expected object, got end of input instead",line_num,start,cursor,end));
       return NULL;
     }
 
@@ -237,7 +239,7 @@ namespace fastjson
       case 't':
         if( end - cursor  < 4 || cursor[1]!='r' || cursor[2]!='u' || cursor[3]!='e' )
         {
-          callback->on_error( ErrorContext( 2001, "Invalid litteral found when expecting object", start, cursor, end));
+          callback->on_error( ErrorContext( 2001, "Invalid litteral found when expecting object", line_num, start, cursor, end));
           return NULL;
         }
         callback->on_true();
@@ -245,7 +247,7 @@ namespace fastjson
       case 'f':
         if( end - cursor  < 5 || cursor[1]!='a' || cursor[2]!='l' || cursor[3]!='s' || cursor[4]!='e' )
         {
-          callback->on_error( ErrorContext( 2001, "Invalid litteral found when expecting object", start, cursor, end));
+          callback->on_error( ErrorContext( 2001, "Invalid litteral found when expecting object", line_num, start, cursor, end));
           return NULL;
         }
         callback->on_false();
@@ -253,7 +255,7 @@ namespace fastjson
       case 'n':
         if( end - cursor  < 4 || cursor[1]!='u' || cursor[2]!='l' || cursor[3]!='l' )
         {
-          callback->on_error( ErrorContext( 2001, "Invalid litteral found when expecting object", start, cursor, end));
+          callback->on_error( ErrorContext( 2001, "Invalid litteral found when expecting object", line_num, start, cursor, end));
           return NULL;
         }
         callback->on_null();
@@ -269,7 +271,7 @@ namespace fastjson
         return cursor;
     }
 
-    callback->on_error( ErrorContext( 2002, "Invalid data found", start, cursor, end));
+    callback->on_error( ErrorContext( 2002, "Invalid data found", line_num, start, cursor, end));
     return NULL;
   }
 
@@ -279,25 +281,26 @@ namespace fastjson
     const unsigned char * start,
     const unsigned char * end,
     T * callback,
-    std::vector<ParserState> * state )
+    std::vector<ParserState> * state,
+    uint32_t & line_num )
   {
-    return parse_start_object(start,end,callback,state);
+    return parse_start_object(start,end,callback,state,line_num);
   }
 
   template<typename T>
-  const unsigned char * read_unicode_escape( const unsigned char * start, const unsigned char * end, uint32_t * val, T * callback )
+  const unsigned char * read_unicode_escape( const unsigned char * start, const unsigned char * end, uint32_t * val, T * callback, uint32_t line_num )
   {
      //We need at least 6 characters \uxxxx
-     if( end-start < 6    ) { callback->on_error( ErrorContext( 3000,"Insufficient data for unicode escape",start,start,end)); return NULL; }
-     if( start[0] != '\\' ) { callback->on_error( ErrorContext( 3001,"Unicode escape must start \\u",start,start,end));        return NULL; }
-     if( start[1] != 'u'  ) { callback->on_error( ErrorContext( 3001,"Unicode escape must start \\u",start,start,end));        return NULL; }
+     if( end-start < 6    ) { callback->on_error( ErrorContext( 3000,"Insufficient data for unicode escape",line_num, start,start,end)); return NULL; }
+     if( start[0] != '\\' ) { callback->on_error( ErrorContext( 3001,"Unicode escape must start \\u",line_num, start,start,end));        return NULL; }
+     if( start[1] != 'u'  ) { callback->on_error( ErrorContext( 3001,"Unicode escape must start \\u",line_num, start,start,end));        return NULL; }
      if( ! (
       ::fastjson::internal::ishex( start[2] ) &&
       ::fastjson::internal::ishex( start[3] ) &&
       ::fastjson::internal::ishex( start[4] ) &&
       ::fastjson::internal::ishex( start[5] ) ) )
      {
-       callback->on_error( ErrorContext( 3002,"Nonhex character found in unicode escape",start,start,end));
+       callback->on_error( ErrorContext( 3002,"Nonhex character found in unicode escape",line_num, start,start,end));
        return NULL;
      }
      *val = ( ::fastjson::internal::hexdigit(start[2]) << 12 ) |
@@ -312,7 +315,8 @@ namespace fastjson
       const unsigned char * start,
       const unsigned char * end,
       T * callback,
-      std::vector<ParserState> * state )
+      std::vector<ParserState> * state,
+      uint32_t & line_num )
   {
     const unsigned char * newcursor=start;
     while(newcursor!=end)
@@ -329,7 +333,7 @@ namespace fastjson
           ++newcursor;
           if(newcursor==end)
           {
-            callback->on_error( ErrorContext( 3003, "End of input while parsing escaped character", start, newcursor, end));
+            callback->on_error( ErrorContext( 3003, "End of input while parsing escaped character", line_num, start, newcursor, end));
             return NULL;
           }
           //What kind of escape is it?
@@ -337,7 +341,7 @@ namespace fastjson
           {
             case 'u': //Unicode escape.
               uint32_t v;
-              newcursor = read_unicode_escape( newcursor-1, end, &v, callback );
+              newcursor = read_unicode_escape( newcursor-1, end, &v, callback, line_num );
               if( ! newcursor ) return NULL;
 
               if( v<0x0080 )
@@ -367,7 +371,7 @@ which will be in the range 0xDC00..0xDFFF.
                 if( v>=0xD800 && v<=0xDBFF )
                 {
                   uint32_t nextv;
-                  newcursor = read_unicode_escape( newcursor, end, & nextv, callback );
+                  newcursor = read_unicode_escape( newcursor, end, & nextv, callback, line_num );
                   if( ! newcursor ) return NULL;
                   if( nextv>=0xDC00 && nextv<=0xDFFF )
                   {
@@ -382,14 +386,14 @@ which will be in the range 0xDC00..0xDFFF.
                   }
                   else
                   {
-                    callback->on_error( ErrorContext( 3004, "Invalid second surrogate pair found when decoing unicode escape", start, newcursor, end));
+                    callback->on_error( ErrorContext( 3004, "Invalid second surrogate pair found when decoing unicode escape", line_num, start, newcursor, end));
                     return NULL;
                   }
                 }
                 /* We should _never_ get a second code point of a surrogate pair here */
                 else if( v>=0xDC00 && v<=0xDFFF )
                 {
-                  callback->on_error( ErrorContext( 3005, "Invalid second surrogate pair without first surrogate pair when decoding unicode escape", start, newcursor, end));
+                  callback->on_error( ErrorContext( 3005, "Invalid second surrogate pair without first surrogate pair when decoding unicode escape", line_num, start, newcursor, end));
                   return NULL;
                 }
                 else
@@ -435,7 +439,7 @@ which will be in the range 0xDC00..0xDFFF.
               ++newcursor;
               break;
             default:
-              callback->on_error( ErrorContext( 3006, "Invalid escape", start, newcursor, end ));
+              callback->on_error( ErrorContext( 3006, "Invalid escape", line_num, start, newcursor, end ));
               return NULL;
           }
           break;
@@ -444,7 +448,7 @@ which will be in the range 0xDC00..0xDFFF.
           ++newcursor;
       }
     }
-    callback->on_error( ErrorContext(  -1000, "Internal error parsing string - should never get here", start,newcursor,end ));
+    callback->on_error( ErrorContext(  -1000, "Internal error parsing string - should never get here", line_num, start,newcursor,end ));
     return NULL;
   }
 
@@ -453,9 +457,10 @@ which will be in the range 0xDC00..0xDFFF.
       const unsigned char * start,
       const unsigned char * end,
       T * callback,
-      std::vector<ParserState> * state )
+      std::vector<ParserState> * state,
+      uint32_t & line_num )
   {
-    const unsigned char * cursor = ::fastjson::internal::parse_number( start, end, callback );
+    const unsigned char * cursor = ::fastjson::internal::parse_number( start, end, callback, line_num );
     if(cursor==start) return NULL;
 
     callback->end_number(start,cursor);
@@ -470,12 +475,13 @@ which will be in the range 0xDC00..0xDFFF.
       const unsigned char * start,
       const unsigned char * end,
       T * callback,
-      std::vector<ParserState> * state )
+      std::vector<ParserState> * state,
+      uint32_t & line_num )
   {
-    const unsigned char * cursor = eat_whitespace(start,end);
+    const unsigned char * cursor = eat_whitespace(start,end, line_num);
     if(cursor==end)
     {
-      callback->on_error( ErrorContext( 4001,"End of input while parsing start of array",start,cursor,end));
+      callback->on_error( ErrorContext( 4001,"End of input while parsing start of array",line_num, start,cursor,end));
       return NULL;
     }
 
@@ -492,7 +498,7 @@ which will be in the range 0xDC00..0xDFFF.
     //If not we need to read a real element
     state->back().state = state::continue_array;
     state->back().subelements +=1;
-    return parse_start_object( cursor, end, callback, state );
+    return parse_start_object( cursor, end, callback, state, line_num );
   }
 
   template<typename T>
@@ -500,12 +506,13 @@ which will be in the range 0xDC00..0xDFFF.
       const unsigned char * start,
       const unsigned char * end,
       T * callback,
-      std::vector<ParserState> * state )
+      std::vector<ParserState> * state,
+      uint32_t & line_num )
   {
-    const unsigned char * cursor = eat_whitespace(start,end);
+    const unsigned char * cursor = eat_whitespace(start,end,line_num);
     if(cursor==end)
     {
-      callback->on_error( ErrorContext( 4002,"End of input while parsing array",start,cursor,end));
+      callback->on_error( ErrorContext( 4002,"End of input while parsing array",line_num, start,cursor,end));
       return NULL;
     }
 
@@ -523,13 +530,13 @@ which will be in the range 0xDC00..0xDFFF.
       ++cursor;
       state->back().state = state::continue_array;
       state->back().subelements +=1;
-      cursor =  parse_start_object( cursor, end, callback, state );
+      cursor =  parse_start_object( cursor, end, callback, state, line_num );
       if(cursor==NULL) return NULL;
       return cursor;
     }
 
     // We got something unexpected..
-    callback->on_error( ErrorContext( 4003, "Unexpected character while parsing array", start, cursor, end));
+    callback->on_error( ErrorContext( 4003, "Unexpected character while parsing array", line_num, start, cursor, end));
     return NULL;
   }
 
@@ -539,12 +546,13 @@ which will be in the range 0xDC00..0xDFFF.
       const unsigned char * start,
       const unsigned char * end,
       T * callback,
-      std::vector<ParserState> * state )
+      std::vector<ParserState> * state,
+      uint32_t & line_num )
   {
-    const unsigned char * cursor = eat_whitespace(start,end);
+    const unsigned char * cursor = eat_whitespace(start,end, line_num);
     if(cursor==end)
     {
-      callback->on_error( ErrorContext( 5001, "End of input while parsing dict start", start, cursor, end));
+      callback->on_error( ErrorContext( 5001, "End of input while parsing dict start", line_num, start, cursor, end));
       return NULL;
     }
 
@@ -560,7 +568,7 @@ which will be in the range 0xDC00..0xDFFF.
     if( callback->mode == mode::ext_any_as_key )
     {
       state->back().state = state::dict_read_value;
-      return parse_start_object( cursor, end, callback, state );
+      return parse_start_object( cursor, end, callback, state, line_num );
     }
     else
     {
@@ -576,7 +584,7 @@ which will be in the range 0xDC00..0xDFFF.
     }
 
     //Otherwise something bad is happenening
-    callback->on_error( ErrorContext( 5002, "Unexpected character while parsing dict start",start,cursor,end));
+    callback->on_error( ErrorContext( 5002, "Unexpected character while parsing dict start",line_num, start,cursor,end));
     return NULL;
   }
 
@@ -585,17 +593,18 @@ which will be in the range 0xDC00..0xDFFF.
       const unsigned char * start,
       const unsigned char * end,
       T * callback,
-      std::vector<ParserState> * state )
+      std::vector<ParserState> * state,
+      uint32_t & line_num )
   {
-    const unsigned char * cursor = eat_whitespace(start,end);
+    const unsigned char * cursor = eat_whitespace(start,end,line_num);
     if(cursor==end)
     {
-      callback->on_error( ErrorContext( 5003, "Unexpected end of input while lookig for dict seperator",start,cursor,end));
+      callback->on_error( ErrorContext( 5003, "Unexpected end of input while lookig for dict seperator",line_num, start,cursor,end));
       return NULL;
     }
     if(*cursor!=':')
     {
-      callback->on_error( ErrorContext( 5004, "Unexpected character while looking for dict seperator",start,cursor,end));
+      callback->on_error( ErrorContext( 5004, "Unexpected character while looking for dict seperator",line_num, start,cursor,end));
       return NULL;
     }
     ++cursor;
@@ -603,7 +612,7 @@ which will be in the range 0xDC00..0xDFFF.
     //Now we should get an object...
     state->back().state = state::dict_continue;
     state->back().subelements++;
-    return  parse_start_object( cursor, end, callback, state );
+    return  parse_start_object( cursor, end, callback, state, line_num );
   }
 
   template<typename T>
@@ -611,12 +620,13 @@ which will be in the range 0xDC00..0xDFFF.
       const unsigned char * start,
       const unsigned char * end,
       T * callback,
-      std::vector<ParserState> * state )
+      std::vector<ParserState> * state,
+      uint32_t & line_num )
   {
-    const unsigned char * cursor = eat_whitespace(start,end);
+    const unsigned char * cursor = eat_whitespace(start,end,line_num);
     if(cursor==end)
     {
-      callback->on_error( ErrorContext( 5005, "Unexpected end of input while reading dict",start,cursor,end));
+      callback->on_error( ErrorContext( 5005, "Unexpected end of input while reading dict",line_num, start,cursor,end));
       return NULL;
     }
 
@@ -631,22 +641,22 @@ which will be in the range 0xDC00..0xDFFF.
     //Nope.. we'd better be getting a comma then a string then
     if( *cursor!=',')
     {
-      callback->on_error( ErrorContext( 5006, "Unexpected character when looking for comma in dict",start,cursor,end));
+      callback->on_error( ErrorContext( 5006, "Unexpected character when looking for comma in dict",line_num, start,cursor,end));
       return NULL;
     }
     ++cursor;
-    cursor = eat_whitespace(cursor,end);
+    cursor = eat_whitespace(cursor,end,line_num);
 
     if(cursor==end)
     {
-      callback->on_error( ErrorContext( 5007, "Unexpected end of input when looking for dict key",start,cursor,end));
+      callback->on_error( ErrorContext( 5007, "Unexpected end of input when looking for dict key",line_num, start,cursor,end));
       return NULL;
     }
 
     if( callback->mode == mode::ext_any_as_key )
     {
       state->back().state = state::dict_read_value;
-      return parse_start_object( cursor, end, callback, state );
+      return parse_start_object( cursor, end, callback, state, line_num );
     }
     else
     {
@@ -661,7 +671,7 @@ which will be in the range 0xDC00..0xDFFF.
       }
     }
 
-    callback->on_error( ErrorContext( 5008, "Unexpected character when looking for dict key",start,cursor,end));
+    callback->on_error( ErrorContext( 5008, "Unexpected character when looking for dict key",line_num, start,cursor,end));
     return NULL;
 
   }
@@ -671,6 +681,7 @@ which will be in the range 0xDC00..0xDFFF.
   {
     std::vector<ParserState> state_stack;
     state_stack.push_back( ParserState(state::start_root) );
+    uint32_t line_num = 1;
 
     if(!callback) return false;
     if(start==end) return false;
@@ -680,37 +691,37 @@ which will be in the range 0xDC00..0xDFFF.
     {
       if( state_stack.back().state != state::start_string )
       {
-        cursor = eat_whitespace(cursor, end);
+        cursor = eat_whitespace(cursor, end,line_num);
         if(cursor==end) break;
       }
       switch( state_stack.back().state )
       {
         case state::start_root:
-          cursor = parse_root( cursor, end, callback, &state_stack );
+          cursor = parse_root( cursor, end, callback, &state_stack, line_num );
           break;
         case state::start_string:
-          cursor = parse_string( cursor, end, callback, &state_stack );
+          cursor = parse_string( cursor, end, callback, &state_stack, line_num );
           break;
         case state::start_number:
-          cursor = parse_number( cursor, end, callback, &state_stack );
+          cursor = parse_number( cursor, end, callback, &state_stack, line_num );
           break;
         case state::start_array :
-          cursor = parse_array( cursor, end, callback, &state_stack );
+          cursor = parse_array( cursor, end, callback, &state_stack, line_num );
           break;
         case state::continue_array :
-          cursor = parse_array_continue( cursor, end, callback, &state_stack );
+          cursor = parse_array_continue( cursor, end, callback, &state_stack, line_num );
           break;
         case state::dict_start:
-          cursor = parse_dict( cursor, end, callback, &state_stack );
+          cursor = parse_dict( cursor, end, callback, &state_stack, line_num );
           break;
         case state::dict_read_value:
-          cursor = parse_dict_value( cursor, end, callback, &state_stack );
+          cursor = parse_dict_value( cursor, end, callback, &state_stack, line_num );
           break;
         case state::dict_continue:
-          cursor =  parse_dict_continue( cursor, end, callback, &state_stack );
+          cursor =  parse_dict_continue( cursor, end, callback, &state_stack, line_num );
           break;
         default:
-          callback->on_error( ErrorContext(-1002,"Inavlid state encountered", start, cursor,end) );
+          callback->on_error( ErrorContext(-1002,"Inavlid state encountered", line_num, start, cursor,end) );
           return false;
       }
 
@@ -719,7 +730,7 @@ which will be in the range 0xDC00..0xDFFF.
 
     if(state_stack.back().state != state::start_root)
     {
-      callback->on_error( ErrorContext(6001, "Input ended while in non-root state",start,end,end) );
+      callback->on_error( ErrorContext(6001, "Input ended while in non-root state",line_num,start,end,end) );
       return false;
     }
     return true;
@@ -932,6 +943,7 @@ which will be in the range 0xDC00..0xDFFF.
         else
         {
           std::cerr<<"fastjson : an error occured ["<<ec.errcode<<"] : "<<ec.mesg<<std::endl;
+          std::cerr<<"On line "<<ec.line_num<<std::endl;
           std::cerr<<"It seems to have happened here..."<<std::endl;
           const unsigned char * ep = (ec.locn+10<ec.end_context)?ec.locn+10:ec.end_context;
           const unsigned char * sp = (ec.locn-10>ec.start_context)?ec.locn-10:ec.start_context;
