@@ -36,12 +36,14 @@ namespace fastjson
     ErrorContext(
       int in_errorcode,
       const std::string & in_mesg,
+      uint32_t in_line_num,
       const unsigned char * in_start_context,
       const unsigned char * in_locn,
       const unsigned char * in_end_context
       ) :
       errcode(in_errorcode),
       mesg(in_mesg),
+      line_num(in_line_num),
       start_context(in_start_context),
       locn(in_locn),
       end_context(in_end_context)
@@ -50,6 +52,7 @@ namespace fastjson
 
     int errcode;
     std::string mesg;
+    uint32_t line_num;
     const unsigned char * start_context;
     const unsigned char * locn;
     const unsigned char * end_context;
