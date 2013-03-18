@@ -169,7 +169,7 @@ const unsigned char * parse_number( const unsigned char * start, const unsigned 
 namespace fastjson
 {
 
-  namespace state
+  namespace state_types
   {
     static const int start_root            = 0;
 
@@ -226,15 +226,15 @@ namespace fastjson
     {
       case '[':
         callback->start_array();
-        state->push_back( ParserState(state::start_array) );
+        state->push_back( ParserState(state_types::start_array) );
         return cursor + 1;
       case '{':
         callback->start_dict();
-        state->push_back( ParserState(state::dict_start) );
+        state->push_back( ParserState(state_types::dict_start) );
         return cursor + 1;
       case '"':
         callback->start_string();
-        state->push_back( ParserState(state::start_string) );
+        state->push_back( ParserState(state_types::start_string) );
         return cursor + 1;
       case 't':
         if( end - cursor  < 4 || cursor[1]!='r' || cursor[2]!='u' || cursor[3]!='e' )
@@ -267,7 +267,7 @@ namespace fastjson
     if( isdigit(*cursor) || *cursor=='-' )
     {
         callback->start_number();
-        state->push_back( ParserState(state::start_number) );
+        state->push_back( ParserState(state_types::start_number) );
         return cursor;
     }
 
@@ -489,14 +489,14 @@ which will be in the range 0xDC00..0xDFFF.
     if( *cursor==']' )
     {
         //NOTE: The array contains no elements so we don't need to increment array_elements
-        // If the array were to have sub elements we'd hit the "]" in state::continue_array instead.
+        // If the array were to have sub elements we'd hit the "]" in state_types::continue_array instead.
         callback->end_array();
         state->pop_back();
         return cursor+1;
     }
 
     //If not we need to read a real element
-    state->back().state = state::continue_array;
+    state->back().state = state_types::continue_array;
     state->back().subelements +=1;
     return parse_start_object( cursor, end, callback, state, line_num );
   }
@@ -528,7 +528,7 @@ which will be in the range 0xDC00..0xDFFF.
     if( *cursor==',' )
     {
       ++cursor;
-      state->back().state = state::continue_array;
+      state->back().state = state_types::continue_array;
       state->back().subelements +=1;
       cursor =  parse_start_object( cursor, end, callback, state, line_num );
       if(cursor==NULL) return NULL;
@@ -567,7 +567,7 @@ which will be in the range 0xDC00..0xDFFF.
 
     if( callback->mode == mode::ext_any_as_key )
     {
-      state->back().state = state::dict_read_value;
+      state->back().state = state_types::dict_read_value;
       return parse_start_object( cursor, end, callback, state, line_num );
     }
     else
@@ -577,8 +577,8 @@ which will be in the range 0xDC00..0xDFFF.
       {
         callback->start_string();
         //Transition the state for when we complete the sub-state, then move into a sub state.
-        state->back().state = state::dict_read_value;
-        state->push_back( ParserState(state::start_string) );
+        state->back().state = state_types::dict_read_value;
+        state->push_back( ParserState(state_types::start_string) );
         return cursor+1;
       }
     }
@@ -610,7 +610,7 @@ which will be in the range 0xDC00..0xDFFF.
     ++cursor;
 
     //Now we should get an object...
-    state->back().state = state::dict_continue;
+    state->back().state = state_types::dict_continue;
     state->back().subelements++;
     return  parse_start_object( cursor, end, callback, state, line_num );
   }
@@ -655,7 +655,7 @@ which will be in the range 0xDC00..0xDFFF.
 
     if( callback->mode == mode::ext_any_as_key )
     {
-      state->back().state = state::dict_read_value;
+      state->back().state = state_types::dict_read_value;
       return parse_start_object( cursor, end, callback, state, line_num );
     }
     else
@@ -665,8 +665,8 @@ which will be in the range 0xDC00..0xDFFF.
       {
         callback->start_string();
         //Transition the state for when we complete the sub-state, then move into a sub state.
-        state->back().state = state::dict_read_value;
-        state->push_back( ParserState(state::start_string) );
+        state->back().state = state_types::dict_read_value;
+        state->push_back( ParserState(state_types::start_string) );
         return cursor+1;
       }
     }
@@ -680,7 +680,7 @@ which will be in the range 0xDC00..0xDFFF.
   bool parse( const unsigned char * start, const unsigned char * end, T * callback )
   {
     std::vector<ParserState> state_stack;
-    state_stack.push_back( ParserState(state::start_root) );
+    state_stack.push_back( ParserState(state_types::start_root) );
     uint32_t line_num = 1;
 
     if(!callback) return false;
@@ -689,35 +689,35 @@ which will be in the range 0xDC00..0xDFFF.
     const unsigned char * cursor = start;
     while( cursor != end )
     {
-      if( state_stack.back().state != state::start_string )
+      if( state_stack.back().state != state_types::start_string )
       {
         cursor = eat_whitespace(cursor, end,line_num);
         if(cursor==end) break;
       }
       switch( state_stack.back().state )
       {
-        case state::start_root:
+        case state_types::start_root:
           cursor = parse_root( cursor, end, callback, &state_stack, line_num );
           break;
-        case state::start_string:
+        case state_types::start_string:
           cursor = parse_string( cursor, end, callback, &state_stack, line_num );
           break;
-        case state::start_number:
+        case state_types::start_number:
           cursor = parse_number( cursor, end, callback, &state_stack, line_num );
           break;
-        case state::start_array :
+        case state_types::start_array :
           cursor = parse_array( cursor, end, callback, &state_stack, line_num );
           break;
-        case state::continue_array :
+        case state_types::continue_array :
           cursor = parse_array_continue( cursor, end, callback, &state_stack, line_num );
           break;
-        case state::dict_start:
+        case state_types::dict_start:
           cursor = parse_dict( cursor, end, callback, &state_stack, line_num );
           break;
-        case state::dict_read_value:
+        case state_types::dict_read_value:
           cursor = parse_dict_value( cursor, end, callback, &state_stack, line_num );
           break;
-        case state::dict_continue:
+        case state_types::dict_continue:
           cursor =  parse_dict_continue( cursor, end, callback, &state_stack, line_num );
           break;
         default:
@@ -728,7 +728,7 @@ which will be in the range 0xDC00..0xDFFF.
       if(cursor==NULL) return false;
     }
 
-    if(state_stack.back().state != state::start_root)
+    if(state_stack.back().state != state_types::start_root)
     {
       callback->on_error( ErrorContext(6001, "Input ended while in non-root state",line_num,start,end,end) );
       return false;
