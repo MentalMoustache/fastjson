@@ -175,7 +175,6 @@ namespace fastjson
 
     static const int start_array           = 1;
     static const int continue_array        = 2;
-    static const int require_array_element = 3;
 
     static const int dict_start            = 4;
     static const int dict_read_value       = 5;
@@ -956,8 +955,6 @@ which will be in the range 0xDC00..0xDFFF.
 
 
     protected:
-      bool first_in_array;
-
       enum ContextType { Root, InArray, InDict };
       struct RootContext {};
       struct ArrayContext { ArrayType * array; ArrayEntry * last_entry; };
@@ -968,6 +965,7 @@ which will be in the range 0xDC00..0xDFFF.
         {
           Context retval;
           retval.type=InArray;
+          retval.c.a = ArrayContext();
           retval.c.a.array = at;
           retval.c.a.last_entry = NULL;
           return retval;
@@ -977,6 +975,7 @@ which will be in the range 0xDC00..0xDFFF.
         {
           Context retval;
           retval.type=InDict;
+          retval.c.d = DictContext();
           retval.c.d.dict = dt;
           retval.c.d.last_entry = NULL;
           retval.c.d.expecting_key = true;
@@ -987,6 +986,7 @@ which will be in the range 0xDC00..0xDFFF.
         {
           Context retval;
           retval.type=Root;
+          retval.c.r = RootContext();
           return retval;
         }
 
