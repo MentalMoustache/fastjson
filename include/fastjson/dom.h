@@ -213,6 +213,7 @@ namespace fastjson { namespace dom {
 
           retval.tok_   = tok;
           retval.chunk_ = chunk;
+          return retval;
         }
 
         static Value create_value( Token * tok, Chunk * chunk )
