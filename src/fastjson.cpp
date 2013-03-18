@@ -759,6 +759,13 @@ which will be in the range 0xDC00..0xDFFF.
   struct XParser
   {
       XParser( UserErrorCallback in_user_error_callback, void * in_userdata ) :
+        doc(NULL),
+        string_start(NULL),
+        string_ptr(NULL),
+        array_ptr(NULL),
+        dict_ptr(NULL),
+        cur_tok(NULL),
+        mode(0),
         user_error_callback(in_user_error_callback),
         user_data(in_userdata)
       {
@@ -826,6 +833,7 @@ which will be in the range 0xDC00..0xDFFF.
               return cur_tok;
             }
         }
+        assert(!"Should never get here");
         //NOTE: Should never get here
         return NULL;
       }
@@ -846,29 +854,29 @@ which will be in the range 0xDC00..0xDFFF.
 
       void start_string()
       {
-        /* Token * t = */ add_child(Token::ValueToken);
+        (void)add_child(Token::ValueToken);
         string_start = string_ptr;
       };
 
       void on_true()
       {
-        add_child( Token::LiteralTrueToken );
+        (void)add_child( Token::LiteralTrueToken );
       };
 
       void on_false()
       {
-        add_child( Token::LiteralFalseToken );
+        (void)add_child( Token::LiteralFalseToken );
       };
 
       void on_null()
       {
-        add_child( Token::LiteralNullToken );
+        (void)add_child( Token::LiteralNullToken );
       };
 
 
       void start_number()
       {
-        /* Token * t = */ add_child(Token::ValueToken);
+        (void)add_child(Token::ValueToken);
         string_start = string_ptr;
       };
 
