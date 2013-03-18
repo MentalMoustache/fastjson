@@ -108,8 +108,11 @@ size_t serialize_inplace( const Token * tok, char * buffer );
 
 static inline std::string as_string( const Token * tok )
 {
-  std::string retval( bytes_required(tok), ' ' );
-  serialize_inplace( tok, &retval[0] );
+  size_t required_length = bytes_required(tok);
+
+  std::string retval( required_length, ' ' );
+  size_t bytes_written = serialize_inplace( tok, &retval[0] );
+  assert( required_length == bytes_written);
   return retval;
 }
 
