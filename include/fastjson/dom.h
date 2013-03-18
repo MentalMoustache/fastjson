@@ -594,7 +594,7 @@ namespace fastjson { namespace dom {
         // This breaks the classes contract as someone could make changes
         // to the structures pointed to by the Token, but its the only way to
         // get a raw token out of these easily.
-        bool get_raw( const std::string & k, Token * token )
+        bool get_raw( const std::string & k, Token * tok )
         {
           DictEntry * child = tok_->dict.ptr;
           while( child )
@@ -604,7 +604,7 @@ namespace fastjson { namespace dom {
             {
               if( std::string(child->key_tok.value.ptr, child->key_tok.value.size) == k )
               {
-                *token = child->value_tok;
+                *tok = child->value_tok;
                 return true;
               }
             }
