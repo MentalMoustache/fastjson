@@ -67,8 +67,8 @@ namespace fastjson
 
       void start_array()  { context.push_back( InArray ); }
       void start_dict()   { context.push_back( InDict );  }
-      void start_string() {};
-      void start_number() {};
+      void start_string() const {};
+      void start_number() const {};
 
       void on_true()  { counts[ context.back() ]++; };
       void on_false() { counts[ context.back() ]++; };

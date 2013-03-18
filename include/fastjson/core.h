@@ -114,7 +114,7 @@ static inline std::string as_string( const Token * tok )
 }
 
 
-static inline uint32_t dict_size( Token * tok)
+static inline uint32_t dict_size( const Token * tok)
 {
   assert( tok->type == fastjson::Token::DictToken );
   fastjson::DictEntry * child = tok->dict.ptr;
@@ -127,7 +127,7 @@ static inline uint32_t dict_size( Token * tok)
   return count;
 }
 
-static inline uint32_t array_size( Token * tok)
+static inline uint32_t array_size( const Token * tok)
 {
   assert( tok->type == fastjson::Token::ArrayToken );
   fastjson::ArrayEntry * child = tok->array.ptr;
