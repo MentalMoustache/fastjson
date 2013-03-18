@@ -106,42 +106,112 @@ namespace fastjson { namespace dom {
         uint32_t available_count_;
     };
 
-    //NOTE: These dont clean up the strings... you need to do that your self.
-    // For us the chunk handles that.
+    struct StringBufferData
+    {
+      StringBufferData() :
+        ref_count_(1),
+        size_(0),
+        buf_(NULL),
+        inuse_(0)
+      {}
+
+      ~StringBufferData()
+      {
+        assert(ref_count_==0);
+        delete buf_;
+      }
+
+      unsigned int ref_count_;
+      unsigned int size_;
+      char * buf_;
+      unsigned int inuse_;
+    };
+
     struct StringBuffer
     {
       public:
-        explicit StringBuffer(unsigned int N )
+        explicit StringBuffer(unsigned int N ) : 
+          data_(new StringBufferData())
         {
-          buf_ = new char[N];
-          size_ = N;
-          inuse_ = 0;
+          data_->size_ = N;
+          data_->buf_ = new char[N];
+          data_->inuse_ = 0;
         }
 
-        struct in_use {} ;
-
-        StringBuffer( char * buffer, unsigned int N, in_use )
+        StringBuffer( char * buffer, unsigned int N ) :
+          data_(new StringBufferData())
         {
-          buf_ = buffer;
-          size_ = N;
-          inuse_ = N;
+          data_->buf_ = buffer;
+          data_->size_ = N;
+          data_->inuse_ = N;
         }
 
-        unsigned int available() const { return size_ - inuse_; }
+        StringBuffer() : 
+          data_(NULL)
+        {
+        }
+
+        StringBuffer(const StringBuffer&other) :
+          data_(other.data_)
+        {
+          if(data_)
+          {
+            ++(data_->ref_count_);
+          }
+        }
+
+        StringBuffer& operator=(const StringBuffer& other)
+        {
+          //Self assignment.
+          if(this==&other) { return *this; }
+          if(other.data_==data_) { return *this; }
+
+          if(data_)
+          {
+            --(data_->ref_count_);
+            if(data_->ref_count_==0)
+            {
+              delete data_;
+            }
+          }
+
+          data_ = other.data_;
+          if(data_)
+          {
+            ++(data_->ref_count_);
+          }
+
+          return *this;
+        }
+
+        unsigned int available() const
+        {
+          assert(data_);
+          return data_->size_ - data_->inuse_;
+        }
         char * write( const char * s, unsigned int len )
         {
-          char * start = buf_ + inuse_;
+          assert(data_);
+          assert( len <= available() );
+          char * start = data_->buf_ + data_->inuse_;
           memcpy( start, s, len );
-          inuse_ += len;
+          data_->inuse_ += len;
           return start;
         }
 
-        void destroy() { delete [] buf_; buf_=NULL;}
+        ~StringBuffer()
+        {
+          if (!data_) return;
+          --(data_->ref_count_);
+          if(data_->ref_count_==0)
+          {
+            delete data_;
+          }
+        }
+
 
       protected:
-        char * buf_;
-        unsigned int size_;
-        unsigned int inuse_;
+        StringBufferData * data_;
     };
 
 
@@ -152,20 +222,13 @@ namespace fastjson { namespace dom {
     {
       public:
         Chunk() : arrays_(), dicts_(), strings_() {}
-        ~Chunk()
-        {
-          for(unsigned int i=0; i<strings_.size(); ++i)
-          {
-            strings_[i].destroy();
-          }
-        }
+        ~Chunk() {}
 
 
         //TODO: Shift this into an object containing the StringBuffers?
         char * create_raw_buffer( const char * b, unsigned int space_required )
         {
-          unsigned int i=0;
-          for(i=0; i<strings_.size(); ++i)
+          for(unsigned int i=0; i<strings_.size(); ++i)
           {
             if ( strings_[i].available() >= space_required )
             {
@@ -190,7 +253,7 @@ namespace fastjson { namespace dom {
 
         void add_string_page( char * buffer, unsigned int L )
         {
-          strings_.push_back( StringBuffer(buffer,L, StringBuffer::in_use() ) );
+          strings_.push_back( StringBuffer(buffer,L) );
         }
 
         Pager<ArrayEntry>& arrays() { return arrays_; }
