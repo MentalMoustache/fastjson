@@ -2,7 +2,7 @@
 // SARU : CxxLibs -L.. -lfastjson
 // SARU : CxxFlags -O2
 
-#include "fastjson.h"
+#include "fastjson/fastjson.h"
 #include <iostream>
 
 const char * json = 
