@@ -81,7 +81,7 @@ static const uint8_t fj_char_traits[256] =
 
 static inline bool ishex( unsigned char c )
 {
-  return fj_char_traits[c] & 0x80;
+  return (fj_char_traits[c] & 0x80)!=0;
 }
 
 static inline uint8_t hexdigit( unsigned char c )
@@ -91,12 +91,12 @@ static inline uint8_t hexdigit( unsigned char c )
 
 static inline bool isdigit( unsigned char c )
 {
-  return fj_char_traits[c] & 0x20;
+  return (fj_char_traits[c] & 0x20)!=0;
 }
 
 static inline bool iswhite( unsigned char c )
 {
-  return fj_char_traits[c] & 0x40;
+  return (fj_char_traits[c] & 0x40)!=0;
 }
 
 //Moves pointer as far as it can while reading a valid number.
